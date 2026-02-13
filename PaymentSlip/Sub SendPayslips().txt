@@ -1,0 +1,70 @@
+Sub SendPayslips()
+
+    Dim olApp As Object
+    Dim olMail As Object
+    Dim xlApp As Object
+    Dim xlWB As Object
+    Dim xlWS As Object
+    Dim i As Long
+
+    Dim folderPath As String
+    Dim filePath As String
+    Dim templatePath As String
+
+    Dim empId As String
+    Dim monthStr As String
+    Dim subj As String
+
+    folderPath = "D:\201_OutlookEmail\PaymentSlip\Jan2026\"
+    templatePath = "D:\201_OutlookEmail\PaymentSlip\PayslipTemplate.oft"
+
+    Set xlApp = CreateObject("Excel.Application")
+    Set xlWB = xlApp.Workbooks.Open("D:\201_OutlookEmail\PaymentSlip\payslip_list.xlsx")
+    Set xlWS = xlWB.Sheets(1)
+
+    Set olApp = Outlook.Application
+
+    i = 2
+    Do While Trim(CStr(xlWS.Cells(i, 1).Value)) <> ""
+
+        If Trim(CStr(xlWS.Cells(i, 5).Value)) <> "Sent" Then
+
+            empId = Trim(CStr(xlWS.Cells(i, 1).Value))
+            monthStr = Trim(CStr(xlWS.Cells(i, 4).Value))
+
+            filePath = folderPath & empId & ".pdf"
+
+            If Dir(filePath) = "" Then
+                xlWS.Cells(i, 5).Value = "Missing PDF"
+                GoTo NextRow
+            End If
+
+            Set olMail = olApp.CreateItemFromTemplate(templatePath)
+
+            With olMail
+                .To = Trim(CStr(xlWS.Cells(i, 3).Value))
+
+                ' Subject is stored in the .oft as:
+                ' {{EMPID}}-檢附 {{MONTH}} 月薪資資訊-謝謝您的辛勞！個人薪資資料請務必保密。
+                subj = .Subject
+                subj = Replace(subj, "{{EMPID}}", empId)
+                subj = Replace(subj, "{{MONTH}}", monthStr)
+                .Subject = subj
+
+                .Attachments.Add filePath
+                .Send
+            End With
+
+            xlWS.Cells(i, 5).Value = "Sent"
+
+        End If
+
+NextRow:
+        i = i + 1
+    Loop
+
+    xlWB.Save
+    xlWB.Close False
+    xlApp.Quit
+
+End Sub
